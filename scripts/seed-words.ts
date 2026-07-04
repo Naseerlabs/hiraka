@@ -4,7 +4,9 @@ config({ path: resolve(process.cwd(), ".env.local") });
 
 import { createClient } from "@supabase/supabase-js";
 import { hiraganaWords } from "../data/hiragana-words";
+import { hiraganaWordsExtra } from "../data/hiragana-words-extra";
 import { katakanaWords } from "../data/katakana-words";
+import { katakanaWordsExtra } from "../data/katakana-words-extra";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -34,11 +36,19 @@ async function fetchPexelsImage(keyword: string): Promise<{ url: string | null; 
 async function seed() {
   console.log("🌱 Seeding words to Supabase...\n");
 
-  // Skip clearing — we check below
+  // Clear existing words
+  const { error: clearError } = await supabase.from("words").delete().neq("id", 0);
+  if (clearError) {
+    console.error(`  ✗ Failed to clear words: ${clearError.message}`);
+    return;
+  }
+  console.log("  ✓ Existing words cleared\n");
 
   const allWords = [
     ...hiraganaWords.map((w) => ({ ...w, script_type: "hiragana" as const })),
+    ...hiraganaWordsExtra.map((w) => ({ ...w, script_type: "hiragana" as const })),
     ...katakanaWords.map((w) => ({ ...w, script_type: "katakana" as const })),
+    ...katakanaWordsExtra.map((w) => ({ ...w, script_type: "katakana" as const })),
   ];
 
   console.log(`Total words to seed: ${allWords.length}\n`);
@@ -67,8 +77,8 @@ async function seed() {
         console.log(`  - ${word.japanese} (${word.romaji}) → no image`);
       }
 
-      // Pexels rate limit
-      await new Promise((r) => setTimeout(r, 500));
+      // Pexels rate limit (200 req/hr free tier — some will 429, gracefully handled)
+      await new Promise((r) => setTimeout(r, 200));
     }
 
     const { error } = await supabase.from("words").insert(rows);

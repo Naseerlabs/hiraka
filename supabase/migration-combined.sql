@@ -23,6 +23,7 @@ create policy "Allow public read" on public.words for select using (true);
 -- 2. Practice sessions table
 create table if not exists public.practice_sessions (
   id            bigint generated always as identity primary key,
+  user_id       uuid       references auth.users(id) on delete cascade,
   script_type   text       not null check (script_type in ('hiragana', 'katakana')),
   word_ids      bigint[]   not null default '{}',
   revealed_ids  bigint[]   not null default '{}',
@@ -31,8 +32,8 @@ create table if not exists public.practice_sessions (
 );
 
 alter table public.practice_sessions enable row level security;
-create policy "Allow all on practice_sessions" on public.practice_sessions
-  for all using (true) with check (true);
+create policy "Users can manage own sessions" on public.practice_sessions
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- 3. Random word selection function
 create or replace function public.get_random_words(

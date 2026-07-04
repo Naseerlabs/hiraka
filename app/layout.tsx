@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
+import AuthButton from "@/components/auth-button";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -29,6 +30,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.className} antialiased bg-zinc-50 text-zinc-900`}>
+        <header className="absolute top-0 right-0 p-4 z-10">
+          <AuthButton />
+        </header>
         {children}
       </body>
     </html>
