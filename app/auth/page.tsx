@@ -2,13 +2,16 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Suspense, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import FadeContent from "@/components/react-bits/FadeContent";
 import ClickSpark from "@/components/react-bits/ClickSpark";
 import Silk from "@/components/react-bits/Silk";
 
 function AuthForm() {
-  const supabase = createClient();
+  const supabase = useMemo(() => {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) return null;
+    return createClient();
+  }, []);
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/";
@@ -20,6 +23,10 @@ function AuthForm() {
 
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!supabase) {
+      setError("Sign in is temporarily unavailable.");
+      return;
+    }
     setLoading(true);
     setError(null);
 
@@ -43,6 +50,10 @@ function AuthForm() {
   }
 
   async function handleGoogleSignIn() {
+    if (!supabase) {
+      setError("Sign in is temporarily unavailable.");
+      return;
+    }
     setLoading(true);
     setError(null);
     const { error } = await supabase.auth.signInWithOAuth({

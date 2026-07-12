@@ -2,96 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer utilities {
-  .animate-fade-in {
-    animation: fade-in 0.2s ease-out;
+@layer base {
+  :root {
+    --background: 45 33% 97%;
+    --foreground: 164 30% 13%;
+    --card: 45 40% 99%;
+    --card-foreground: 164 30% 13%;
+    --popover: 45 40% 99%;
+    --popover-foreground: 164 30% 13%;
+    --primary: 161 44% 25%;
+    --primary-foreground: 45 33% 97%;
+    --secondary: 43 45% 90%;
+    --secondary-foreground: 164 30% 13%;
+    --muted: 42 24% 92%;
+    --muted-foreground: 165 10% 39%;
+    --accent: 17 70% 58%;
+    --accent-foreground: 45 33% 97%;
+    --destructive: 0 66% 46%;
+    --destructive-foreground: 45 33% 97%;
+    --border: 42 18% 83%;
+    --input: 42 18% 78%;
+    --ring: 161 44% 25%;
+    --chart-1: 161 44% 25%;
+    --chart-2: 17 70% 58%;
+    --chart-3: 43 45% 70%;
+    --chart-4: 165 10% 39%;
+    --chart-5: 45 33% 97%;
+    --radius: 0.875rem;
   }
+
+  * { @apply border-border; }
+  html { @apply bg-background scroll-smooth; }
+  body { @apply bg-background text-foreground; }
+  ::selection { @apply bg-secondary text-secondary-foreground; }
+  button, a, input, select { @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background; }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .text-pretty { text-wrap: pretty; }
+  .animate-fade-in { animation: fade-in 220ms ease-out; }
 }
 
 @keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes shine {
-  from {
-    background-position: 200% center;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
-  to {
-    background-position: -200% center;
-  }
-}
-
-@keyframes gradient-shift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-@keyframes spark-pop {
-  0% {
-    transform: translate(-50%, -50%) scale(0);
-    opacity: 1;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0;
-  }
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-@keyframes pulse-soft {
-  0%, 100% {
-    opacity: 0.4;
-  }
-  50% {
-    opacity: 0.8;
-  }
-}
-
-.animate-shine {
-  animation: shine 3s linear infinite;
-}
-
-.animate-float {
-  animation: float 3s ease-in-out infinite;
-}
-
-.animate-pulse-soft {
-  animation: pulse-soft 2s ease-in-out infinite;
-}
-
-/* Glass morphism utility */
-.glass {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.glass-dark {
-  background: rgba(26, 39, 68, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
 }

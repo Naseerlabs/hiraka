@@ -1,166 +1,113 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { ArrowLeft, Check, Eye, Home, RotateCcw, X, XIcon } from "lucide-react";
 import type { Word } from "@/types/database";
-import SplitText from "@/components/react-bits/SplitText";
-import BlurText from "@/components/react-bits/BlurText";
-import CountUp from "@/components/react-bits/CountUp";
-import GradientText from "@/components/react-bits/GradientText";
-import FadeContent from "@/components/react-bits/FadeContent";
-import ClickSpark from "@/components/react-bits/ClickSpark";
+import type { JapaneseSentence } from "@/data/japanese-sentences";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
-const PROGRESS_TOTAL = 20;
+export type PracticeItem = Word | JapaneseSentence;
 
-export default function PracticeClient({
-  words,
-  scriptType,
-}: {
-  words: Word[];
-  scriptType: "hiragana" | "katakana";
-}) {
+type Props = { items: PracticeItem[]; practiceType: "hiragana" | "katakana" | "sentences"; topicLabel?: string };
+
+function isSentence(item: PracticeItem): item is JapaneseSentence { return "hiragana" in item; }
+
+export default function PracticeClient({ items, practiceType, topicLabel }: Props) {
   const router = useRouter();
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
-  const [revealedIds, setRevealedIds] = useState<Set<number>>(new Set());
+  const [answers, setAnswers] = useState<Record<number, boolean>>({});
   const [completed, setCompleted] = useState(false);
-  const [cardKey, setCardKey] = useState(0);
+  const item = items[index];
+  const total = items.length;
+  const correct = Object.values(answers).filter(Boolean).length;
+  const incorrect = Object.values(answers).filter((answer) => !answer).length;
+  const label = practiceType === "sentences" ? topicLabel ?? "Daily sentences" : `${practiceType.charAt(0).toUpperCase()}${practiceType.slice(1)} words`;
 
-  const word = words[index];
-  const isLast = index >= PROGRESS_TOTAL - 1;
+  const handleAnswer = useCallback((value: boolean) => {
+    setAnswers((current) => ({ ...current, [index]: value }));
+    if (index >= total - 1) setCompleted(true);
+    else { setIndex((current) => current + 1); setRevealed(false); }
+  }, [index, total]);
 
-  const handleReveal = useCallback(() => {
-    setRevealed(true);
-    setRevealedIds((prev) => new Set(prev).add(word.id));
-  }, [word.id]);
-
-  const handleNext = useCallback(() => {
-    if (isLast) {
-      setCompleted(true);
-    } else {
-      setIndex((i) => i + 1);
-      setRevealed(false);
-      setCardKey((k) => k + 1);
+  useEffect(() => {
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === " " && !revealed) { event.preventDefault(); setRevealed(true); }
+      if (revealed && (event.key === "1" || event.key.toLowerCase() === "x")) handleAnswer(false);
+      if (revealed && (event.key === "2" || event.key.toLowerCase() === "c")) handleAnswer(true);
     }
-  }, [isLast]);
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [revealed, handleAnswer]);
 
-  if (completed || !word) {
+  if (!item) return null;
+
+  if (completed) {
+    const accuracy = Math.round((correct / total) * 100);
     return (
-      <main className="min-h-screen flex items-center justify-center p-6">
-        <FadeContent direction="up" className="text-center max-w-md">
-          <h2 className="text-3xl font-bold mb-4">
-            <GradientText text="Session Complete!" />
-          </h2>
-          <p className="text-zinc-500 mb-2">
-            You practiced {PROGRESS_TOTAL} {scriptType} words
-          </p>
-          <div className="text-4xl font-bold text-zinc-900 mb-2">
-            <CountUp target={revealedIds.size} className="text-rose-500" />
-            <span className="text-zinc-300"> / {PROGRESS_TOTAL}</span>
-          </div>
-          <p className="text-sm text-zinc-400 mb-8">words revealed</p>
-          <ClickSpark>
-            <button
-              onClick={() => router.push("/")}
-              className="bg-zinc-900 text-white px-8 py-3 rounded-xl font-medium hover:bg-zinc-800 transition-colors"
-            >
-              Back to Home
-            </button>
-          </ClickSpark>
-        </FadeContent>
+      <main className="flex min-h-screen items-center justify-center bg-secondary/50 p-4 sm:p-6">
+        <Card className="w-full max-w-xl shadow-lg">
+          <CardHeader className="items-center gap-4 text-center">
+            <div className="flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground"><Check className="size-8" /></div>
+            <div><p className="text-sm font-semibold uppercase tracking-wider text-primary">Session complete</p><h1 className="mt-2 text-balance font-serif text-3xl font-semibold sm:text-4xl">Nice work. Keep the rhythm going.</h1><p className="mt-3 text-muted-foreground">You completed {total} {practiceType === "sentences" ? "sentences" : "words"} in {label.toLowerCase()}.</p></div>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-6">
+            <div className="grid grid-cols-3 overflow-hidden rounded-2xl border border-border bg-muted/40">
+              <ResultStat value={`${accuracy}%`} label="Accuracy" />
+              <ResultStat value={String(correct)} label="Correct" bordered />
+              <ResultStat value={String(incorrect)} label="Review" />
+            </div>
+            <Progress value={accuracy} aria-label={`${accuracy}% accuracy`} />
+          </CardContent>
+          <CardFooter className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Button variant="outline" size="lg" onClick={() => window.location.reload()}><RotateCcw data-icon="inline-start" />Practice again</Button>
+            <Button size="lg" onClick={() => router.push("/")}><Home data-icon="inline-start" />Back to dashboard</Button>
+          </CardFooter>
+        </Card>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-6">
-      {/* Progress bar */}
-      <div className="w-full max-w-md mb-8">
-        <div className="flex gap-1">
-          {Array.from({ length: PROGRESS_TOTAL }).map((_, i) => (
-            <div
-              key={i}
-              className={`h-2 flex-1 rounded-full transition-all duration-500 ${
-                i < index
-                  ? revealedIds.has(words[i]?.id ?? 0)
-                    ? "bg-rose-400"
-                    : "bg-zinc-300"
-                  : i === index
-                    ? "bg-zinc-900"
-                    : "bg-zinc-200"
-              }`}
-            />
-          ))}
+    <main className="min-h-screen bg-background">
+      <header className="border-b border-border bg-background">
+        <div className="mx-auto flex max-w-4xl items-center gap-4 px-4 py-4 sm:px-6">
+          <AlertDialog>
+            <AlertDialogTrigger asChild><Button variant="ghost" size="icon" aria-label="Exit practice"><X /></Button></AlertDialogTrigger>
+            <AlertDialogContent size="sm"><AlertDialogHeader><AlertDialogTitle>Leave this session?</AlertDialogTitle><AlertDialogDescription>Your answers from this session will not be saved.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Keep practicing</AlertDialogCancel><AlertDialogAction onClick={() => router.push("/")}>Leave session</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+          </AlertDialog>
+          <div className="min-w-0 flex-1"><div className="mb-2 flex items-center justify-between gap-3"><span className="truncate text-sm font-medium">{label}</span><span className="shrink-0 text-sm text-muted-foreground">{index + 1} of {total}</span></div><Progress value={(index / total) * 100} aria-label={`Question ${index + 1} of ${total}`} /></div>
         </div>
-        <p className="text-right text-sm text-zinc-400 mt-1">
-          {index + 1} / {PROGRESS_TOTAL}
-        </p>
-      </div>
+      </header>
 
-      {/* Card */}
-      <FadeContent key={cardKey} direction="up" className="w-full max-w-md">
-        <div className="glass rounded-3xl overflow-hidden shadow-lg">
-          {/* Image */}
-          <div className="aspect-[4/3] bg-zinc-100 flex items-center justify-center overflow-hidden">
-            {word.image_url ? (
-              <img
-                src={word.image_url}
-                alt={word.meaning}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-7xl opacity-30">
-                {scriptType === "hiragana" ? "あ" : "ア"}
-              </span>
-            )}
-          </div>
-
-          {/* Kana text */}
-          <div className="p-6">
-            <div className="text-center text-4xl tracking-wider mb-6">
-              <SplitText text={word.japanese} stagger={80} />
-            </div>
-
-            {/* Reveal button / Romaji */}
+      <div className="mx-auto flex max-w-4xl flex-col items-center px-4 py-6 sm:px-6 sm:py-10">
+        <div className="mb-4 flex w-full max-w-2xl items-center justify-between"><Badge variant="secondary">{practiceType === "sentences" ? "Read aloud" : "Read the word"}</Badge><span className="text-xs text-muted-foreground">Space to reveal</span></div>
+        <Card className="w-full max-w-2xl overflow-hidden shadow-md">
+          {!isSentence(item) && <div className="flex aspect-[16/8] items-center justify-center overflow-hidden bg-muted sm:aspect-[16/7]">{item.image_url ? <div className="relative size-full"><Image src={item.image_url} alt={item.meaning} fill sizes="(max-width: 672px) 100vw, 672px" className="object-cover" /></div> : <span className="font-serif text-7xl text-muted-foreground/40">{practiceType === "hiragana" ? "あ" : "ア"}</span>}</div>}
+          <CardContent className="flex min-h-80 flex-col justify-center p-6 text-center sm:p-10">
+            <p className="text-sm font-medium text-muted-foreground">{isSentence(item) ? "Read this sentence" : "How do you read this?"}</p>
+            <p lang="ja" className={isSentence(item) ? "mt-5 text-balance font-serif text-3xl font-semibold leading-relaxed sm:text-4xl" : "mt-5 font-serif text-5xl font-semibold tracking-wider sm:text-6xl"}>{isSentence(item) ? item.hiragana : item.japanese}</p>
             {revealed ? (
-              <div className="text-center animate-fade-in">
-                <div className="bg-zinc-50 rounded-xl p-4 mb-4">
-                  <BlurText
-                    text={word.romaji}
-                    className="text-xl font-medium text-zinc-800 justify-center"
-                  />
-                  <BlurText
-                    text={word.meaning}
-                    className="text-sm text-zinc-400 mt-1 justify-center"
-                    delay={200}
-                  />
-                </div>
+              <div className="mt-8 flex flex-col gap-4 animate-fade-in">
+                {isSentence(item) && <div className="rounded-xl bg-secondary/60 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Natural Japanese</p><p lang="ja" className="mt-2 font-serif text-xl sm:text-2xl">{item.japanese}</p></div>}
+                <div><p className="text-lg font-medium text-primary">{item.romaji}</p><p className="mt-2 text-base leading-relaxed text-muted-foreground">{isSentence(item) ? item.english : item.meaning}</p></div>
               </div>
-            ) : (
-              <ClickSpark>
-                <button
-                  onClick={handleReveal}
-                  className="w-full py-3 px-6 bg-zinc-900 text-white rounded-xl font-medium hover:bg-zinc-800 transition-colors"
-                >
-                  Reveal Answer
-                </button>
-              </ClickSpark>
-            )}
-
-            {/* Next button */}
-            {revealed && (
-              <ClickSpark>
-                <button
-                  onClick={handleNext}
-                  className="w-full py-3 px-6 mt-3 border-2 border-zinc-200 text-zinc-700 rounded-xl font-medium hover:bg-zinc-50 transition-colors"
-                >
-                  {isLast ? "See Results" : "Next Word"}
-                </button>
-              </ClickSpark>
-            )}
-          </div>
-        </div>
-      </FadeContent>
+            ) : <Button size="lg" className="mt-10 h-12 w-full" onClick={() => setRevealed(true)}><Eye data-icon="inline-start" />Reveal answer</Button>}
+          </CardContent>
+          {revealed && <CardFooter className="grid grid-cols-2 gap-3 border-t border-border bg-muted/30 p-4 sm:p-6"><Button variant="outline" size="lg" className="h-12" onClick={() => handleAnswer(false)}><XIcon data-icon="inline-start" />Needs work</Button><Button size="lg" className="h-12" onClick={() => handleAnswer(true)}><Check data-icon="inline-start" />Got it</Button></CardFooter>}
+        </Card>
+        <Button variant="ghost" className="mt-5" onClick={() => router.push("/")}><ArrowLeft data-icon="inline-start" />Return to dashboard</Button>
+      </div>
     </main>
   );
+}
+
+function ResultStat({ value, label, bordered = false }: { value: string; label: string; bordered?: boolean }) {
+  return <div className={bordered ? "border-x border-border p-5 text-center" : "p-5 text-center"}><p className="text-2xl font-semibold">{value}</p><p className="mt-1 text-xs text-muted-foreground">{label}</p></div>;
 }

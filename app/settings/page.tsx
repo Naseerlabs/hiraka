@@ -1,322 +1,69 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
-import FadeContent from "@/components/react-bits/FadeContent";
-import ClickSpark from "@/components/react-bits/ClickSpark";
-import Silk from "@/components/react-bits/Silk";
-
-type SettingsSection = "accounts" | "notifications" | "appearance" | "privacy" | "help" | "about";
-
-const sections: { id: SettingsSection; label: string; icon: string }[] = [
-  { id: "accounts", label: "Accounts", icon: "👤" },
-  { id: "notifications", label: "Notifications", icon: "🔔" },
-  { id: "appearance", label: "Appearance", icon: "🎨" },
-  { id: "privacy", label: "Privacy & Security", icon: "🔒" },
-  { id: "help", label: "Help", icon: "❓" },
-  { id: "about", label: "About", icon: "ℹ️" },
-];
-
-function AccountsSection({ user, onSignOut }: { user: User; onSignOut: () => void }) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Account Information</h3>
-        <div className="glass rounded-xl p-4 space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-zinc-500">Email</span>
-            <span className="text-sm font-medium">{user.email}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-zinc-500">User ID</span>
-            <span className="text-sm font-mono text-zinc-400">{user.id.slice(0, 8)}...</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-zinc-500">Last Sign In</span>
-            <span className="text-sm text-zinc-600">
-              {new Date(user.last_sign_in_at || user.created_at).toLocaleDateString()}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Sign Out</h3>
-        <ClickSpark>
-          <button
-            onClick={onSignOut}
-            className="w-full py-3 px-4 bg-red-50 text-red-600 rounded-xl font-medium hover:bg-red-100 transition-colors"
-          >
-            Sign Out
-          </button>
-        </ClickSpark>
-      </div>
-    </div>
-  );
-}
-
-function NotificationsSection() {
-  const [settings, setSettings] = useState({
-    practiceReminders: true,
-    emailNotifications: false,
-    weeklyProgress: true,
-  });
-
-  const toggle = (key: keyof typeof settings) => {
-    setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-semibold">Notification Preferences</h3>
-      <div className="space-y-3">
-        {Object.entries(settings).map(([key, value]) => (
-          <div key={key} className="glass rounded-xl p-4 flex justify-between items-center">
-            <span className="text-sm capitalize">{key.replace(/([A-Z])/g, " $1")}</span>
-            <button
-              onClick={() => toggle(key as keyof typeof settings)}
-              className={`w-12 h-6 rounded-full transition-colors ${
-                value ? "bg-rose-400" : "bg-zinc-300"
-              }`}
-            >
-              <div
-                className={`w-5 h-5 bg-white rounded-full transition-transform ${
-                  value ? "translate-x-6" : "translate-x-0.5"
-                }`}
-              />
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function AppearanceSection() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-
-  return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-semibold">Appearance</h3>
-
-      <div>
-        <h4 className="text-sm font-medium mb-3">Theme</h4>
-        <div className="grid grid-cols-2 gap-3">
-          {(["light", "dark"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTheme(t)}
-              className={`p-4 rounded-xl border-2 transition-all ${
-                theme === t
-                  ? "border-rose-400 bg-rose-50"
-                  : "border-zinc-200 hover:border-zinc-300"
-              }`}
-            >
-              <div className={`w-full h-16 rounded-lg mb-2 ${
-                t === "light" ? "bg-white border border-zinc-200" : "bg-zinc-800"
-              }`} />
-              <span className="text-sm capitalize">{t}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <h4 className="text-sm font-medium mb-3">Accent Color</h4>
-        <div className="flex gap-3">
-          {["#e8789a", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"].map((color) => (
-            <button
-              key={color}
-              className="w-10 h-10 rounded-full border-2 border-transparent hover:scale-110 transition-transform"
-              style={{ backgroundColor: color }}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PrivacySection() {
-  return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-semibold">Privacy & Security</h3>
-
-      <div className="space-y-3">
-        <a
-          href="/privacy"
-          className="glass rounded-xl p-4 flex justify-between items-center hover:bg-zinc-50 transition-colors"
-        >
-          <span className="text-sm">Privacy Policy</span>
-          <span className="text-zinc-400">→</span>
-        </a>
-        <a
-          href="/terms"
-          className="glass rounded-xl p-4 flex justify-between items-center hover:bg-zinc-50 transition-colors"
-        >
-          <span className="text-sm">Terms of Service</span>
-          <span className="text-zinc-400">→</span>
-        </a>
-      </div>
-
-      <div>
-        <h4 className="text-sm font-medium mb-3">Data</h4>
-        <div className="glass rounded-xl p-4 space-y-3">
-          <p className="text-sm text-zinc-500">
-            Your practice data is stored securely in Supabase. We never share your data with third parties.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function HelpSection() {
-  return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-semibold">Help</h3>
-
-      <div className="space-y-3">
-        <div className="glass rounded-xl p-4">
-          <h4 className="text-sm font-medium mb-2">How to Practice</h4>
-          <ol className="text-sm text-zinc-500 space-y-1 list-decimal list-inside">
-            <li>Select Hiragana or Katakana from the home page</li>
-            <li>Look at the image and try to read the Japanese text</li>
-            <li>Click &quot;Reveal Answer&quot; to check your reading</li>
-            <li>Click &quot;Next Word&quot; to continue</li>
-          </ol>
-        </div>
-
-        <div className="glass rounded-xl p-4">
-          <h4 className="text-sm font-medium mb-2">Keyboard Shortcuts</h4>
-          <div className="text-sm text-zinc-500 space-y-1">
-            <p><kbd className="px-2 py-0.5 bg-zinc-100 rounded text-xs">Space</kbd> Reveal answer</p>
-            <p><kbd className="px-2 py-0.5 bg-zinc-100 rounded text-xs">Enter</kbd> Next word</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AboutSection() {
-  return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-semibold">About</h3>
-
-      <div className="glass rounded-xl p-4 space-y-3">
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-zinc-500">App Name</span>
-          <span className="text-sm font-medium">Hiraka</span>
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-zinc-500">Version</span>
-          <span className="text-sm font-mono">1.0.0</span>
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-zinc-500">Built With</span>
-          <span className="text-sm">Next.js + Supabase</span>
-        </div>
-      </div>
-
-      <div>
-        <h4 className="text-sm font-medium mb-3">Credits</h4>
-        <div className="glass rounded-xl p-4 text-sm text-zinc-500 space-y-1">
-          <p>Images from <a href="https://pexels.com" className="text-rose-500 hover:underline" target="_blank" rel="noopener noreferrer">Pexels</a></p>
-          <p>Components from <a href="https://reactbits.dev" className="text-rose-500 hover:underline" target="_blank" rel="noopener noreferrer">React Bits</a></p>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { ArrowRight, BookOpenText, CircleHelp, Languages, LogOut, ShieldCheck, UserRound } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SettingsPage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) return null;
+    return createClient();
+  }, []);
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [activeSection, setActiveSection] = useState<SettingsSection>("accounts");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
-        router.push("/auth");
-        return;
-      }
-      setUser(data.user);
-    });
-  }, []);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push("/");
-    router.refresh();
-  };
-
-  if (!user) return null;
-
-  const renderSection = () => {
-    switch (activeSection) {
-      case "accounts":
-        return <AccountsSection user={user} onSignOut={handleSignOut} />;
-      case "notifications":
-        return <NotificationsSection />;
-      case "appearance":
-        return <AppearanceSection />;
-      case "privacy":
-        return <PrivacySection />;
-      case "help":
-        return <HelpSection />;
-      case "about":
-        return <AboutSection />;
+    if (!supabase) {
+      setLoading(false);
+      return;
     }
-  };
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) { router.replace("/auth?redirect=/settings"); return; }
+      setUser(data.user);
+      setLoading(false);
+    });
+  }, [router, supabase]);
+
+  if (loading) {
+    return <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6"><div className="flex flex-col gap-4"><Skeleton className="h-10 w-48" /><Skeleton className="h-48 w-full" /><Skeleton className="h-56 w-full" /></div></main>;
+  }
+
+  if (!user) {
+    return <main className="mx-auto max-w-2xl px-4 py-16 text-center sm:px-6"><h1 className="text-3xl font-semibold">Sign in to view settings</h1><p className="mt-3 text-muted-foreground">Your account controls will appear here after you sign in.</p><Button className="mt-6" onClick={() => router.push("/auth?redirect=/settings")}>Go to sign in</Button></main>;
+  }
 
   return (
-    <main className="relative min-h-screen overflow-hidden">
-      <Silk className="opacity-10" speed={0.1} color="#e8789a" />
+    <main className="mx-auto max-w-4xl px-4 py-10 pb-28 sm:px-6 md:pb-12">
+      <div className="mb-8"><p className="text-sm font-semibold uppercase tracking-wider text-primary">Your space</p><h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Settings</h1><p className="mt-2 text-muted-foreground">Manage your account and learn how Hiraka works.</p></div>
 
-      <div className="relative z-10 max-w-4xl mx-auto p-6">
-        <FadeContent direction="up">
-          <div className="mb-8">
-            <button
-              onClick={() => router.push("/")}
-              className="text-sm text-zinc-400 hover:text-rose-500 transition-colors mb-4"
-            >
-              ← Back to Home
-            </button>
-            <h1 className="text-3xl font-bold">Settings</h1>
-          </div>
-        </FadeContent>
+      <div className="flex flex-col gap-6">
+        <Card id="account">
+          <CardHeader><div className="flex items-start gap-4"><div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-secondary text-primary"><UserRound className="size-6" /></div><div><CardTitle>Account</CardTitle><CardDescription className="mt-1">Your sign-in information stays private and appears only here.</CardDescription></div></div></CardHeader>
+          <CardContent><dl className="flex flex-col gap-4 rounded-xl bg-muted/50 p-4"><div className="flex flex-col justify-between gap-1 sm:flex-row"><dt className="text-sm text-muted-foreground">Email address</dt><dd className="break-all text-sm font-medium">{user.email}</dd></div><Separator /><div className="flex flex-col justify-between gap-1 sm:flex-row"><dt className="text-sm text-muted-foreground">Member since</dt><dd className="text-sm font-medium">{new Date(user.created_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}</dd></div></dl></CardContent>
+          <CardFooter><Button variant="outline" onClick={async () => { await supabase?.auth.signOut(); router.push("/"); router.refresh(); }}><LogOut data-icon="inline-start" />Sign out</Button></CardFooter>
+        </Card>
 
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Sidebar */}
-          <FadeContent delay={100} direction="left" className="md:w-64 shrink-0">
-            <nav className="glass rounded-xl p-2">
-              {sections.map((section) => (
-                <button
-                  key={section.id}
-                  onClick={() => setActiveSection(section.id)}
-                  className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors flex items-center gap-3 ${
-                    activeSection === section.id
-                      ? "bg-rose-50 text-rose-600"
-                      : "text-zinc-600 hover:bg-zinc-50"
-                  }`}
-                >
-                  <span>{section.icon}</span>
-                  {section.label}
-                </button>
-              ))}
-            </nav>
-          </FadeContent>
-
-          {/* Content */}
-          <FadeContent delay={200} direction="up" className="flex-1">
-            {renderSection()}
-          </FadeContent>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card><CardHeader><Languages className="mb-2 size-6 text-primary" /><CardTitle>Practice preferences</CardTitle><CardDescription>Choose the topic, level, and session length each time you begin. Nothing is locked in.</CardDescription></CardHeader><CardFooter><Button asChild variant="outline"><Link href="/?mode=sentences#sentence-setup">Set up sentences<ArrowRight data-icon="inline-end" /></Link></Button></CardFooter></Card>
+          <Card><CardHeader><ShieldCheck className="mb-2 size-6 text-primary" /><CardTitle>Privacy & security</CardTitle><CardDescription>Learn how your account and learning activity are handled.</CardDescription></CardHeader><CardContent className="flex flex-col gap-2"><Link className="flex items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-muted" href="/privacy">Privacy policy<ArrowRight className="size-4" /></Link><Link className="flex items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-muted" href="/terms">Terms of service<ArrowRight className="size-4" /></Link></CardContent></Card>
         </div>
+
+        <Card><CardHeader><div className="flex items-start gap-4"><div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary"><CircleHelp className="size-6" /></div><div><CardTitle>How practice works</CardTitle><CardDescription className="mt-1">A simple routine designed to strengthen active reading.</CardDescription></div></div></CardHeader><CardContent><ol className="grid gap-4 sm:grid-cols-3"><Step number="1" title="Read" copy="Say the kana or sentence aloud before revealing anything." /><Step number="2" title="Reveal" copy="Compare with romaji, meaning, and natural Japanese." /><Step number="3" title="Reflect" copy="Mark whether you got it, then review your result." /></ol></CardContent></Card>
+
+        <Card className="border-primary/20 bg-secondary/45"><CardHeader><BookOpenText className="mb-2 size-6 text-primary" /><CardTitle>About Hiraka</CardTitle><CardDescription className="leading-relaxed">Hiraka is a focused Japanese reading companion with hiragana, katakana, and 500 practical daily-use sentences. Word imagery is provided through Pexels where available.</CardDescription></CardHeader></Card>
       </div>
     </main>
   );
+}
+
+function Step({ number, title, copy }: { number: string; title: string; copy: string }) {
+  return <li className="flex gap-3"><span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">{number}</span><div><h3 className="font-medium">{title}</h3><p className="mt-1 text-sm leading-relaxed text-muted-foreground">{copy}</p></div></li>;
 }
